@@ -1,0 +1,7 @@
+#Goal
+---
+# Result
+float64[] arm_angles
+---
+# Feedback
+bool arm_status
