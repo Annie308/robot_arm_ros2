@@ -1,11 +1,16 @@
 #include <chrono>
 #include <memory>
 #include <cmath>
-#include <Eigen/Dense>
+#include <functional>
+#include <thread>
+#include <future>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/string.hpp"
 #include "robot_arm_interfaces/srv/inverse_kin.hpp"
+#include <Eigen/Dense>
+
+using namespace std::chrono_literals;
+using namespace std::placeholders;
 
 //Make thise parameters!!!!
 //----------------------
@@ -17,7 +22,6 @@ const float l5 = 3.f;
 const float l6 = 3.f;
 //---------------------
 
-
 const float PI = 3.14159265358979323846f;
 
 Eigen::Vector3d link1(0, l1, 0);
@@ -28,6 +32,7 @@ Eigen::Vector3d link4 = { l4, 0,0, };
 Eigen::Vector3d link5(0, l5, 0);
 Eigen::Vector3d link5_1(l5, 0, 0);
 Eigen::Vector3d link6(l6, 0, 0);
+
 
 static std::tuple<float,float,float> ik(float x, float y, float z) {
 	Eigen::Vector3d p_target = Eigen::Vector3d(x, y, z);
@@ -76,40 +81,102 @@ static std::tuple<float,float,float> ik(float x, float y, float z) {
 	return std::make_tuple(t1, t2, t3);
 }
 
-void ik_res (const std::shared_ptr<robot_arm_interfaces::srv::InverseKin::Request> request,
-          std::shared_ptr<robot_arm_interfaces::srv::InverseKin::Response>      response)
-{
-  float x = request->target.x; 
-  float y = request->target.y; 
-  float z =request->target.z;
+static std::tuple<float,float,float> wristIk(float roll, float pitch, float yaw) {
 
-  std::tuple<float,float,float> result = ik(x, y, z);
-  response->angles.push_back(std::get<0>(result));
-  response->angles.push_back(std::get<1>(result));
-  response->angles.push_back(std::get<2>(result));
+	//getting desired rotation matrices
+	//roll about X
+	Eigen::MatrixXd R_roll(3, 3);
+	R_roll << 1, 0, 0,
+		0, cos(roll), -sin(roll),
+		0, sin(roll), cos(roll);
 
-  RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Incoming request\n");
-  RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "x: %f\ny: %f\nz: %f",request->target.x,request->target.y,request->target.z);
+	//Y
+	Eigen::MatrixXd R_yaw(3, 3);
+	R_yaw << cos(yaw), 0, sin(yaw),
+		0, 1, 0,
+		-sin(yaw), 0, cos(yaw);
 
-  RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending back %zu angles: ", response->angles.size());
+	//pitch about Z
+	Eigen::MatrixXd R_pitch(3, 3);
+	R_pitch << cos(pitch), -sin(pitch), 0,
+		sin(pitch), cos(pitch), 0,
+		0, 0, 1;
 
-  for (size_t i=0; i< response->angles.size(); i++){
-     RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Theta %zu: %lf rads...", i, response->angles[i]);
-  }
+	Eigen::MatrixXd goalRot = R_roll * R_pitch * R_yaw; // relative wrist rotation
+	float t4, t5, t6;
+
+	//constraints
+	float sin_t5 = std::clamp(goalRot(0, 2), -1.0, 1.0);
+	t5 = asinf(sin_t5);
+
+	//check for gimbal lock
+	bool gimbalLock = fabsf(fabs(sin_t5) - 1.0f) < 1e-5f;
+
+	if (gimbalLock) {
+		// Snap to 90
+		t5 = (sin_t5 > 0 ? PI/2 : -PI/2);
+		t4 = 0.0f;
+		t6 = atan2f(goalRot(1, 0), goalRot(1, 1));
+	}
+	else {
+		t4 = atan2f(-goalRot(1, 2), goalRot(2, 2));
+		t6 = atan2f(-goalRot(0, 1), goalRot(0, 0));
+	}
+	return std::make_tuple(t4, t5, t6);
 }
 
-
-int main(int argc, char **argv)
+class IkServer : public rclcpp::Node
 {
-  rclcpp::init(argc, argv);
+public:
+	
+  IkServer(const rclcpp::NodeOptions & options=rclcpp::NodeOptions())
+  	: Node("ik_server", options)
+  {	
+	//a client needs 3 things:
+	/*
+	1.The templated action type name: GetArmAngles.
+	2.A ROS 2 node to add the action client to: this.
+	3. The action name: 'arm_angles'.
+	*/
+    service_ptr_ = this->create_service<robot_arm_interfaces::srv::InverseKin>("arm_angles", 
+		std::bind(&IkServer::ik_res, this, _1, _2)
+	);
 
-  std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("inverse_kin");
+  	RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Ready to calculate arm angles.");
+        
+    }
+	
+private:
+  rclcpp::Service<robot_arm_interfaces::srv::InverseKin>::SharedPtr service_ptr_;
 
-  rclcpp::Service<robot_arm_interfaces::srv::InverseKin>::SharedPtr service =
-    node->create_service<robot_arm_interfaces::srv::InverseKin>("arm_angles", &ik_res);
 
-  RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Ready to find arm joint angles.");
+	void ik_res (const std::shared_ptr<robot_arm_interfaces::srv::InverseKin::Request> request,
+          std::shared_ptr<robot_arm_interfaces::srv::InverseKin::Response>      response)
+	{
+		float x = request->target.x; 
+		float y = request->target.y; 
+		float z =request->target.z;
 
-  rclcpp::spin(node);
-  rclcpp::shutdown();
+		std::tuple<float,float,float> result = ik(x, y, z);
+		response->angles.push_back(std::get<0>(result));
+		response->angles.push_back(std::get<1>(result));
+		response->angles.push_back(std::get<2>(result));
+
+		RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Incoming request\n");
+		RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "x: %f\ny: %f\nz: %f",request->target.x,request->target.y,request->target.z);
+		RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Sending back %zu angles: ", response->angles.size());
+
+		for (size_t i=0; i< response->angles.size(); i++){
+			RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Theta %zu: %f rads...", i, response->angles[i]);
+		}
+	}
+};
+
+
+int main(int argc, char ** argv)
+{
+	rclcpp::init(argc, argv);
+	rclcpp::spin(std::make_shared<IkServer>());
+	rclcpp::shutdown();
+	return 0;
 }
