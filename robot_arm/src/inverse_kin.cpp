@@ -9,31 +9,11 @@
 #include "robot_arm_interfaces/srv/inverse_kin.hpp"
 #include <Eigen/Dense>
 
+#include "arm_attributes.h"
+
 using namespace std::chrono_literals;
 using namespace std::placeholders;
 using InverseKin = robot_arm_interfaces::srv::InverseKin;
-
-//Make these parameters!!!!
-//----------------------
-const float l1 = 5.0f; 
-const float l2 = 10.0f;
-const float l3 = 10.f;
-const float l4 = 3.f;
-const float l5 = 3.f;
-const float l6 = 3.f;
-//---------------------
-
-const float PI = 3.14159265358979323846f;
-
-Eigen::Vector3d link1(0, l1, 0);
-Eigen::Vector3d link2(l2, 0, 0);
-Eigen::Vector3d link3(l3, 0, 0);
-
-Eigen::Vector3d link4 = { l4, 0,0, };
-Eigen::Vector3d link5(0, l5, 0);
-Eigen::Vector3d link5_1(l5, 0, 0);
-Eigen::Vector3d link6(l6, 0, 0);
-
 
 static std::tuple<float,float,float> ik(float x, float y, float z) {
 	Eigen::Vector3d p_target = Eigen::Vector3d(x, y, z);

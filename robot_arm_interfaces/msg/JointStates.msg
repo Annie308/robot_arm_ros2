@@ -1,1 +1,1 @@
-float64[] joint_pos
+geometry_msgs/Vector3[] joint_positions
