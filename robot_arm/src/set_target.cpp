@@ -15,6 +15,7 @@
 #include "robot_arm_interfaces/msg/joint_angles.hpp"
 #include "robot_arm_interfaces/msg/joint_states.hpp"
 #include "robot_arm_interfaces/srv/inverse_kin.hpp"
+#include "robot_arm_interfaces/srv/set_claw.hpp"
 
 
 using namespace std::chrono_literals;
@@ -24,8 +25,9 @@ using JointStates = robot_arm_interfaces::msg::JointStates;
 using SetTarget = robot_arm_interfaces::action::SetTarget;
 using GoalHandleTarget = rclcpp_action::ClientGoalHandle<SetTarget>;
 using InverseKin = robot_arm_interfaces::srv::InverseKin;
+using SetClaw = robot_arm_interfaces::srv::SetClaw;
 
-enum class GoalType {SET_ARM_POS, SET_WRIST_ROTATION};
+enum class GoalType {SET_ARM_POS, SET_WRIST_ROTATION, CLAMP_CLAW, RELEASE_CLAW};
 
 
 //sends a service to the inverse kin server to receive neccessary joint angles to reach target position
@@ -36,6 +38,7 @@ public:
     : Node("get_angles_client", options),  target(target_), goal_type(goal_type_)
     {
         client_ptr_ =this->create_client<InverseKin>("target_arm_angles");
+		claw_client_ptr_ =this->create_client<SetClaw>("set_claw");	
     }
 
     std::vector<float> get_angles(){
@@ -77,10 +80,56 @@ public:
         }
 
 		return {};
-     
     }
+
+	void set_claw(){
+		if (!this->claw_client_ptr_) {
+			RCLCPP_ERROR(this->get_logger(), "Claw service client not initialized");
+			return;
+		}
+		auto request = std::make_shared<SetClaw::Request>();
+		
+		if (goal_type == GoalType::CLAMP_CLAW){
+			RCLCPP_INFO(this->get_logger(), "Request to clamp claw sent.");
+			request->clamp_claw = true;
+		}else if (goal_type == GoalType::RELEASE_CLAW){
+			RCLCPP_INFO(this->get_logger(), "Request to release claw sent.");
+			request->clamp_claw = false;
+		}else{
+			RCLCPP_ERROR(this->get_logger(), "Invalid claw command");
+			return;
+		}
+
+		while (!claw_client_ptr_->wait_for_service(5s)) {
+            if (!rclcpp::ok()) {
+            RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+                return;
+            }
+            RCLCPP_INFO(this->get_logger(), "service not available, waiting again...");
+        }
+
+       auto result = claw_client_ptr_->async_send_request(request);
+    
+        // Wait for the result.
+        //shared_from_this is a smart pointer that can point to this
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) ==
+            rclcpp::FutureReturnCode::SUCCESS)
+        {  
+			bool response = result.get()->success;
+           
+			if (response){
+				RCLCPP_INFO(this->get_logger(), "claw state set successfully");
+			}else{
+				RCLCPP_ERROR(this->get_logger(), "Failed to set claw state");
+			}
+        } else {
+            RCLCPP_ERROR(this->get_logger(), "Failed to call service set_claw");
+        }
+	}
+
 private:
     rclcpp::Client<InverseKin>::SharedPtr client_ptr_;
+	rclcpp::Client<SetClaw>::SharedPtr claw_client_ptr_;
     rclcpp::TimerBase::SharedPtr timer_;
     geometry_msgs::msg::Vector3 target;
 	GoalType goal_type;
@@ -101,42 +150,55 @@ public:
 	*/
 	target = get_user_input();
 
-	if (!target.has_value()){
-		RCLCPP_ERROR(this->get_logger(), "No valid target provided, shutting down.");
-		rclcpp::shutdown();
-		return;
+	if (goal_type == GoalType::SET_ARM_POS || goal_type == GoalType::SET_WRIST_ROTATION){
+		this->target_client_ptr_ = rclcpp_action::create_client<SetTarget>(
+		this,
+		"configure_arm");
+	}else{
+		auto set_claw_client = std::make_shared<GetAnglesClient>(rclcpp::NodeOptions(), *target, goal_type);
+		set_claw_client->set_claw();
 	}
-
-	RCLCPP_INFO(this->get_logger(), "Target received: x: %f, y: %f, z: %f", 
-	target->x, target->y, target->z);
-
-	auto get_angles_client = std::make_shared<GetAnglesClient>(rclcpp::NodeOptions(), *target, goal_type);
-	
-	get_angles_client->get_angles();
-
-	this->client_ptr_ = rclcpp_action::create_client<SetTarget>(
-	this,
-	"set_position");
-
 	auto timer_callback_lambda = [this](){return send_goal();};
-
 	timer_ = this->create_wall_timer(500ms, timer_callback_lambda);
-	
 	}
 private:
-	rclcpp_action::Client<SetTarget>::SharedPtr client_ptr_;
+	rclcpp_action::Client<SetTarget>::SharedPtr target_client_ptr_ = nullptr;
+	
 	std::vector<float> goal_angles;
 	rclcpp::TimerBase::SharedPtr timer_;
 	std::optional<geometry_msgs::msg::Vector3> target;
 	GoalType goal_type;
 
 	void send_goal(){
+
+		if (goal_type != GoalType::SET_ARM_POS && goal_type != GoalType::SET_WRIST_ROTATION){
+			rclcpp::shutdown();			//this is rlly bad but idk how else to stop it from spinning...
+			return;
+		}
+
+		if (!target.has_value()){
+			RCLCPP_ERROR(this->get_logger(), "No valid target provided, shutting down.");
+			rclcpp::shutdown();
+			return;
+		}
+		if (!this->target_client_ptr_) {
+			RCLCPP_ERROR(this->get_logger(), "Action client not initialized");
+			rclcpp::shutdown();
+			return;
+		}
+
 		timer_->cancel();
 
 		using namespace std::placeholders;
 
+		auto get_angles_client = std::make_shared<GetAnglesClient>(rclcpp::NodeOptions(), *target, goal_type);
+		get_angles_client->get_angles();
+
+		RCLCPP_INFO(this->get_logger(), "Target received: x: %f, y: %f, z: %f", 
+			target->x, target->y, target->z);
+
 		//if time out
-		if (!this->client_ptr_->wait_for_action_server()) {
+		if (!this->target_client_ptr_->wait_for_action_server()) {
 			RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
 		}
 
@@ -145,7 +207,12 @@ private:
 
         goal_msg.target_angles = goal_angles;
 
-		
+		if (goal_msg.target_angles.size() ==0){
+			RCLCPP_ERROR(this->get_logger(), "No goal angles recieved, shutting down.");
+			rclcpp::shutdown();
+			return;
+		}
+
 		RCLCPP_INFO(this->get_logger(), "Sending target angles goal: ");
 
 		for (auto angle: goal_msg.target_angles){
@@ -200,11 +267,9 @@ private:
 			for (auto res: result.result->angles_reached){
 				RCLCPP_INFO(this->get_logger(), "%f ", res);
 			}
-
-			rclcpp::shutdown();
 		};
 		
-		this->client_ptr_->async_send_goal(goal_msg, send_goal_options);
+		this->target_client_ptr_->async_send_goal(goal_msg, send_goal_options);
 	}
 
 	std::optional<geometry_msgs::msg::Vector3> get_user_input()
@@ -236,19 +301,27 @@ private:
 				RCLCPP_INFO(this->get_logger(), "Request received: Set target wrist rotation");
 				goal_type = GoalType::SET_WRIST_ROTATION;
 				break;
+			case '3':
+				RCLCPP_INFO(this->get_logger(), "Request received: Clamp claw");
+				goal_type = GoalType::CLAMP_CLAW;
+				break;
+			case '4':
+				RCLCPP_INFO(this->get_logger(), "Request received: Release claw");
+				goal_type = GoalType::RELEASE_CLAW;
+				break;
 			default:
-				RCLCPP_INFO(this->get_logger(),"Request received: Invalid input");
+				RCLCPP_ERROR(this->get_logger(),"Request received: Invalid input");
 				return std::nullopt;
 		}
 
-		switch (goal_type){
-			case GoalType::SET_ARM_POS:
-				RCLCPP_INFO(this->get_logger(), "Enter target arm position as x y z >> ");
-			break;
-
-			case GoalType::SET_WRIST_ROTATION:
-				RCLCPP_INFO(this->get_logger(), "Enter target wrist rotation as x y z >> ");
-			break;
+		if (goal_type== GoalType::SET_ARM_POS){
+			RCLCPP_INFO(this->get_logger(), "Enter target arm position as x y z >> ");
+		}
+		else if (goal_type== GoalType::SET_WRIST_ROTATION){
+			RCLCPP_INFO(this->get_logger(), "Enter target wrist rotation as x y z >> ");
+		}
+		else{
+			return std::nullopt;
 		}
 		std::string str_target;
 		std::getline(std::cin, str_target);  // read the whole line, including spaces
@@ -269,7 +342,6 @@ private:
 	}
 
 };
-
 
 
 int main(int argc, char ** argv)

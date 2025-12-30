@@ -13,7 +13,7 @@ using namespace std::chrono_literals;
 using namespace std::placeholders;
 using InverseKin = robot_arm_interfaces::srv::InverseKin;
 
-//Make thise parameters!!!!
+//Make these parameters!!!!
 //----------------------
 const float l1 = 5.0f; 
 const float l2 = 10.0f;
@@ -171,6 +171,9 @@ private:
 			RCLCPP_ERROR(this->get_logger(), "Invalid mode selected");
 			return;
 		}
+		response->angles.push_back(std::get<0>(result));
+		response->angles.push_back(std::get<1>(result));
+		response->angles.push_back(std::get<2>(result));
 		
 		RCLCPP_INFO(this->get_logger(), "x: %f\ny: %f\nz: %f",request->target.x,request->target.y,request->target.z);
 		RCLCPP_INFO(this->get_logger(), "Sending back %zu angles: ", response->angles.size());
@@ -178,9 +181,7 @@ private:
 		for (size_t i=0; i< response->angles.size(); i++){
 			RCLCPP_INFO(this->get_logger(), "Theta %zu: %f rads...", i, response->angles[i]);
 		}
-		response->angles.push_back(std::get<0>(result));
-		response->angles.push_back(std::get<1>(result));
-		response->angles.push_back(std::get<2>(result));
+		
   }	
 };
 

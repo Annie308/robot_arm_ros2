@@ -15,6 +15,7 @@
 #include "std_msgs/msg/float32.hpp"
 
 #include "robot_arm_interfaces/srv/inverse_kin.hpp"
+#include "robot_arm_interfaces/srv/set_claw.hpp"
 #include "robot_arm_interfaces/action/set_target.hpp"
 #include "robot_arm_interfaces/msg/joint_angles.hpp"
 
@@ -23,6 +24,9 @@ using namespace std::chrono_literals;
 using namespace std::placeholders;
 
 using JointAngles = robot_arm_interfaces::msg::JointAngles;
+using SendPos = robot_arm_interfaces::action::SetTarget;
+using GoalHandleAngles = rclcpp_action::ServerGoalHandle<SendPos>;
+using SetClaw = robot_arm_interfaces::srv::SetClaw;
 
 //controls the servo motors and sends data for forward kinematics
 
@@ -30,23 +34,13 @@ using JointAngles = robot_arm_interfaces::msg::JointAngles;
 class MotorController : public rclcpp::Node
 {
 public:
-  using SendPos = robot_arm_interfaces::action::SetTarget;
-  using GoalHandleAngles = rclcpp_action::ServerGoalHandle<SendPos>;
+
 
   MotorController(const rclcpp::NodeOptions & options= rclcpp::NodeOptions())
   : Node("motor_controller", options)
   {
-    RCLCPP_INFO(this->get_logger(), "Motors ready.");
-      subscription_ptr_ = this->create_subscription<JointAngles>(
-		"gyro_arm_angles", 10, std::bind(&MotorController::topic_callback, this, _1));
-
-    auto timer_callback_lambda = [this](){return std::bind(&MotorController::topic_callback, this, _1);};
-
-    this->timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(500),
-      timer_callback_lambda);
-
-      auto handle_goal = [this](
+    
+    auto handle_goal = [this](
       const rclcpp_action::GoalUUID & uuid, [[maybe_unused]]std::shared_ptr<const SendPos::Goal> goal)
     {
       RCLCPP_INFO(this->get_logger(), "Received goal request.");
@@ -73,23 +67,52 @@ public:
 
     this->action_server_ = rclcpp_action::create_server<SendPos>(
       this,
-      "set_position",
+      "configure_arm",
       handle_goal,
       handle_cancel,
       handle_accepted);
-  
+
+    RCLCPP_INFO(this->get_logger(), "Motors ready.");
+      subscription_ptr_ = this->create_subscription<JointAngles>(
+		"gyro_arm_angles", 10, std::bind(&MotorController::topic_callback, this, _1));
+
+    this->service_ptr_ = this->create_service<SetClaw>(
+      "set_claw",
+      std::bind(&MotorController::set_claw, this, _1, _2));
+
+    auto timer_callback_lambda = [this](){return std::bind(&MotorController::topic_callback, this, _1);};
+
+    this->timer_ = this->create_wall_timer(
+      std::chrono::milliseconds(500),
+      timer_callback_lambda);
   }
 
 private:
  
   rclcpp_action::Server<SendPos>::SharedPtr action_server_;
   rclcpp::Subscription<JointAngles>::SharedPtr subscription_ptr_;
+  rclcpp::Service<SetClaw>::SharedPtr service_ptr_;
+  
 	rclcpp::TimerBase::SharedPtr timer_;
+
+  void set_claw(
+    const std::shared_ptr<SetClaw::Request> request,
+    std::shared_ptr<SetClaw::Response> response)
+  {
+    if (request->clamp_claw){
+      RCLCPP_INFO(this->get_logger(), "Clamping claw.");
+      // Code to clamp the claw
+    } else {
+      RCLCPP_INFO(this->get_logger(), "Releasing claw.");
+      // Code to release the claw
+    }
+    response->success = true;
+  }
 
   void topic_callback(const JointAngles::SharedPtr msg)
 	{
 		for (size_t i=0; i<msg->joint_angles.size(); i++){
-			RCLCPP_INFO(this->get_logger(), "Angles Recieved: '%lf'", msg->joint_angles[i]);
+//			RCLCPP_INFO(this->get_logger(), "Angles Recieved: '%lf'", msg->joint_angles[i]);
 		}
     }
 

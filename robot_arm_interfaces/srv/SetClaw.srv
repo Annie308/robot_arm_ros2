@@ -1,0 +1,5 @@
+# Request
+bool clamp_claw      #true: close claw, false: open claw
+---
+# Response
+bool success

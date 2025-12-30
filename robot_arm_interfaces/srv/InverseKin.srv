@@ -1,6 +1,6 @@
-# Goal
+# Request
 geometry_msgs/Vector3 target
 int32 mode  # 0: arm, 1: wrist
 ---
-# Result
+# Response
 float32[] angles
