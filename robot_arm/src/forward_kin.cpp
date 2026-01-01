@@ -8,7 +8,7 @@
 #include "geometry_msgs/msg/vector3.hpp"
 
 #include "rclcpp/rclcpp.hpp"
-#include "robot_arm_interfaces/msg/joint_states.hpp"
+#include "robot_arm_interfaces/msg/joint_positions.hpp"
 #include "robot_arm_interfaces/msg/joint_angles.hpp"
 #include <Eigen/Dense>
 
@@ -16,7 +16,7 @@
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;
-using JointStates = robot_arm_interfaces::msg::JointStates;
+using JointPositions = robot_arm_interfaces::msg::JointPositions;
 using JointAngles = robot_arm_interfaces::msg::JointAngles;	
 
 const int JOINTS_NUM = 6;
@@ -91,8 +91,8 @@ public:
 	ForwardKinNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
 		: Node("forward_kin_node", options)
 	{
-		publisher_ = this->create_publisher<JointStates>(
-			"joint_states", 10);
+		publisher_ = this->create_publisher<JointPositions>(
+			"joint_positions", 10);
 
 		subscription_ = this->create_subscription<robot_arm_interfaces::msg::JointAngles>(
 			"gyro_arm_angles", 10, std::bind(&ForwardKinNode::topic_callback, this, _1));
@@ -104,7 +104,7 @@ public:
 
 		 auto publisher_timer_callback =
 			[this]() -> void {
-				auto message = JointStates();
+				auto message = JointPositions();
 
 				message.joint_positions = curr_positions;
 
@@ -141,7 +141,7 @@ private:
 			static_cast<float>(msg->joint_angles[5])
 		);
 	}
-	rclcpp::Publisher<JointStates>::SharedPtr publisher_;
+	rclcpp::Publisher<JointPositions>::SharedPtr publisher_;
 	rclcpp::Subscription<JointAngles>::SharedPtr subscription_;
 	rclcpp::TimerBase::SharedPtr publisher_timer_;
 	rclcpp::TimerBase::SharedPtr subscription_timer_;

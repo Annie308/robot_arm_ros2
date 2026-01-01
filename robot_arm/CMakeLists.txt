@@ -12,60 +12,86 @@ find_package(std_msgs REQUIRED)
 find_package(robot_arm_interfaces REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(rclcpp_action REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 #executables
-add_executable(get_angles src/inverse_kin.cpp)
+add_executable(inverse_kin src/inverse_kin.cpp)
 add_executable(start_motors src/motor_control.cpp)
 add_executable(start_gyro src/gyro_sensor.cpp)
 add_executable(set_target src/set_target.cpp)
 add_executable(get_pos src/forward_kin.cpp)
+add_executable(state_publisher src/state_publisher.cpp)
 
-target_include_directories(get_angles
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-    include_directories(${EIGEN3_INCLUDE_DIRS})
-  )
+target_link_libraries(state_publisher PUBLIC
+  ${robot_arm_interfaces_TARGETS}
+  ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  tf2_ros::tf2_ros
+  ${tf2_geometry_msgs_TARGETS}
+  rclcpp::rclcpp
+)
 
 target_include_directories(get_pos
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-    include_directories(${EIGEN3_INCLUDE_DIRS})
+    include                 # your package headers
+    ${EIGEN3_INCLUDE_DIRS}  # Eigen headers
+)
+
+target_include_directories(inverse_kin
+  PUBLIC
+    include                 # your package headers
+    ${EIGEN3_INCLUDE_DIRS}  # Eigen headers
+)
+target_link_libraries(inverse_kin PUBLIC
+    ${robot_arm_interfaces_TARGETS}
+    ${std_msgs_TARGETS}
+    Eigen3::Eigen 
+    rclcpp::rclcpp
+  )
+target_link_libraries(get_pos PUBLIC
+    ${robot_arm_interfaces_TARGETS}
+    ${std_msgs_TARGETS}
+    Eigen3::Eigen
+    rclcpp::rclcpp
+  )
+target_link_libraries(start_motors PUBLIC
+    ${robot_arm_interfaces_TARGETS}
+    ${std_msgs_TARGETS}
+    rclcpp::rclcpp
+    rclcpp_action::rclcpp_action
+  )
+target_link_libraries(start_gyro PUBLIC
+    ${robot_arm_interfaces_TARGETS}
+    ${std_msgs_TARGETS}
+    rclcpp::rclcpp
+  )
+target_link_libraries(set_target PUBLIC
+    ${robot_arm_interfaces_TARGETS}
+    ${std_msgs_TARGETS}
+    rclcpp::rclcpp
+    rclcpp_action::rclcpp_action
   )
 
-target_include_directories(start_motors
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
-
-target_include_directories(start_gyro
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
-
-target_include_directories(set_target
-  PUBLIC
-   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-    )
-
-ament_target_dependencies(get_angles rclcpp std_msgs robot_arm_interfaces rclcpp_action) 
-ament_target_dependencies(get_pos rclcpp std_msgs robot_arm_interfaces)
-ament_target_dependencies(start_motors rclcpp std_msgs robot_arm_interfaces rclcpp_action) 
-ament_target_dependencies(start_gyro rclcpp std_msgs robot_arm_interfaces)
-ament_target_dependencies(set_target rclcpp std_msgs robot_arm_interfaces rclcpp_action)
-
-target_link_libraries(get_angles Eigen3::Eigen)
-target_link_libraries(get_pos Eigen3::Eigen)
-
 install(TARGETS 
-  get_angles
+  inverse_kin
   start_motors
   start_gyro
   set_target
   get_pos
+  state_publisher
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY 
+  urdf
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+install(DIRECTORY 
+  launch
+  DESTINATION share/${PROJECT_NAME}/
 )
 
 ament_export_dependencies(rosidl_default_runtime)

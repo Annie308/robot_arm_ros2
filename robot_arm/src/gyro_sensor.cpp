@@ -27,9 +27,9 @@ public:
         message.joint_angles.push_back(0.1);
         message.joint_angles.push_back(0.2);
         message.joint_angles.push_back(0.3);
-         message.joint_angles.push_back(0.4);
-          message.joint_angles.push_back(0.5);
-           message.joint_angles.push_back(0.6);
+        message.joint_angles.push_back(0.4);
+        message.joint_angles.push_back(0.5);
+        message.joint_angles.push_back(0.6);
 
         for (size_t i=0; i < message.joint_angles.size(); i++){
             RCLCPP_INFO(this->get_logger(), "Publishing: '%lf'", message.joint_angles[i]);

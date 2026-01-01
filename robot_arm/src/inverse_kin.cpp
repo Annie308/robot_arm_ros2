@@ -119,7 +119,7 @@ public:
 	2.A ROS 2 node to add the action client to: this.
 	3. The action name: 'arm_angles'.
 	*/
-    service_ptr_ = this->create_service<InverseKin>("target_arm_angles", 
+    service_ptr_ = this->create_service<InverseKin>("target_angles", 
 		std::bind(&IkServer::get_result, this, _1, _2)
 	);
 

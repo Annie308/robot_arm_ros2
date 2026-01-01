@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <node pkg="robot_arm" exec="start_gyro" name="gyro_sensor"/>
+  <node pkg="robot_arm" exec="get_angles" name="inverse_kin"/ >
+  <node pkg="robot_arm" exec="start_motors" name="start_motors"/>
+    <node pkg="robot_arm" exec="get_pos" name="forward_kin"/ >
+   <node pkg="robot_arm" exec="set_target" name="set_target"/> 
+</launch>
