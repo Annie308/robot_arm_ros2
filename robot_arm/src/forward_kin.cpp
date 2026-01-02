@@ -25,23 +25,22 @@ const int JOINTS_NUM = 6;
 std::vector<geometry_msgs::msg::Vector3> fk(float t1, float t2, float t3, float t4, float t5, float t6) {
 
 	//Rotation transformation matrices
-	//Rotation about Y axis
+	// Rotation about Z
 	Eigen::MatrixXd rot1(3, 3);
-	rot1 << cos(t1), 0, sin(t1),
-		0, 1, 0,
-		-sin(t1), 0, cos(t1);
+	rot1 << cos(t1), -sin(t1), 0,
+		sin(t1), cos(t1), 0,
+		0, 0, 1;
 
-	// Rotation about Z
+	//Y
 	Eigen::MatrixXd rot2(3, 3);
-	rot2 << cos(t2), -sin(t2),0,
-		sin(t2), cos(t2), 0,
-		0, 0, 1;
-
-	// Rotation about Z
+	rot2 << cos(t2), 0, sin(t2),
+		0, 1, 0,
+		-sin(t2), 0, cos(t2);
+	//Y
 	Eigen::MatrixXd rot3(3, 3);
-	rot3 << cos(t3), -sin(t3), 0,
-		sin(t3), cos(t3), 0,
-		0, 0, 1;
+	rot3 << cos(t3), 0, sin(t3),
+		0, 1, 0,
+		-sin(t3), 0, cos(t3);
 
 	//roll about X
 	Eigen::MatrixXd rot4(3, 3);
@@ -50,16 +49,18 @@ std::vector<geometry_msgs::msg::Vector3> fk(float t1, float t2, float t3, float 
 		0, sin(t4), cos(t4);
 
 	//roll about Y
+	Eigen::MatrixXd  rot6(3, 3);
+	rot6 << cos(t6), -sin(t6), 0,
+		sin(t6), cos(t6), 0,
+		0, 0, 1;
+
+	//pitch about Z
 	Eigen::MatrixXd rot5(3, 3);
 	rot5 << cos(t5), 0, sin(t5),
 		0, 1, 0,
 		-sin(t5), 0, cos(t5);
 
-	//pitch about Z
-	Eigen::MatrixXd  rot6(3, 3);
-	rot6 << cos(t6), -sin(t6), 0,
-		sin(t6), cos(t6), 0,
-		0, 0, 1;
+	
 
 	//defining joint positons after transformations
 	Eigen::Vector3d link1_end = rot1 * link1;

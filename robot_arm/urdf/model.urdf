@@ -41,7 +41,7 @@
 
   <link name="link2">
     <visual>
-        <origin xyz="0 0 0.25" rpy="0 0 0" />
+        <origin xyz="0.2 0 0" rpy="0 1.57 0" />
         <geometry>
         <cylinder radius="0.1" length=".5" />
         </geometry>
@@ -52,7 +52,7 @@
    <joint name="link1_to_link2" type="revolute">
    <axis xyz="0 1 0"/>
    <origin xyz="0 0 0.5" rpy="0 0 0"/>
-   <limit effort="10" velocity="1" lower="-1.57" upper="1.57"/>
+   <limit effort="10" velocity="1" lower="-3.14" upper="3.14"/>
     <parent link="link1"/>
     <child link="link2"/>
   </joint>
@@ -63,15 +63,15 @@
         <geometry>
         <cylinder radius="0.1" length=".5" />
         </geometry>
-        <origin xyz="0 0 0.25" rpy="0 0 0" />
+        <origin xyz="0.25 0 0" rpy="0 1.57 0" />
         <material name="gray" />
     </visual>
   </link>
 
   <joint name="link2_to_link3" type="revolute">
     <axis xyz="0 1 0"/>
-    <origin xyz="0 0 0.5" />
-     <limit effort="10" velocity="1" lower="-1.57" upper="1.57"/>
+    <origin xyz="0.5 0 0" />
+     <limit effort="10" velocity="1" lower="-3.14" upper="3.14"/>
     <parent link="link2"/>
     <child link="link3"/>
   </joint>
@@ -88,7 +88,7 @@
 
   <joint name="link3_to_link4" type="revolute">
     <axis xyz="1 0 0"/>
-    <origin xyz="0 0 0.5" />
+    <origin xyz="0.5 0 0" />
     <limit effort="10" velocity="1" lower="-3.14" upper="3.14"/>
     <parent link="link3"/>
     <child link="link4"/>
@@ -100,7 +100,7 @@
         <geometry>
         <cylinder radius="0.1" length=".5" />
         </geometry>
-        <origin xyz="-0.05 0 0.25" rpy="0 0 0" />
+        <origin xyz="0 0 0.25" rpy="0 0 0" />
         <material name="gray" />
     </visual>
   </link>
@@ -108,7 +108,7 @@
   <joint name="link4_to_link5" type="revolute">
     <axis xyz = "0 0 1"/>
     <origin xyz="0.5 0 0" />
-    <limit effort="10" velocity="1" lower="-1.57" upper="1.57"/>
+    <limit effort="10" velocity="1" lower="-3.14" upper="3.14"/>
     <parent link="link4"/>
     <child link="link5"/>
   </joint>
@@ -152,7 +152,7 @@
         <geometry>
         <cylinder radius="0.1" length=".5" />
         </geometry>
-        <origin xyz="0.25 0 0.05" rpy="0 1.57 0" />
+        <origin xyz="0.25 0 0" rpy="0 1.57 0" />
         <material name="gray" />
     </visual>
   </link>
@@ -160,7 +160,7 @@
   <joint name="connector2_to_link6" type="revolute">
     <axis xyz = "0 1 0"/>
     <origin xyz="0 0 -0.5"/>
-    <limit effort="10" velocity="1" lower="-1.57" upper="1.57"/>
+    <limit effort="10" velocity="1" lower="-3.14" upper="3.14"/>
     <parent link="l5_6_connector2"/>
     <child link="link6"/>
   </joint>

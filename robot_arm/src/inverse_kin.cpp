@@ -20,47 +20,39 @@ using JointAngles = robot_arm_interfaces::msg::JointAngles;
 static std::tuple<float,float,float> ik(float x, float y, float z) {
 	Eigen::Vector3d p_target = Eigen::Vector3d(x, y, z);
 
-	p_target = p_target - base_link- -link1- link4 - link6 - Eigen::Vector3d{l5, 0, 0};		
+	float l3_eff = l3 + l4 +l5+l6;
+	
+	p_target = p_target -link1 - base_link;
 
 	//angle away from XY plane
-	float t = atan2(p_target.z(), p_target.x());
+	float t = atan2(p_target.y(), p_target.x());
 
-	//rotate on the y axis to project onto XY plane
+	//rotate on the z axis to project onto XZ plane
 	Eigen::MatrixXd proj_max(3, 3);
-	proj_max << cos(t), 0, sin(t),
-		0, 1, 0,
-		-sin(t), 0, cos(t);
+	proj_max << cos(-t), -sin(-t), 0,
+		sin(-t), cos(-t), 0,
+		0, 0, 1;
 
 	//projected point 
 	Eigen::Vector3d p_proj = proj_max * p_target;
-	
-	//defining new coordinates 
-	float x1 = p_proj(0);
-	float y1 = p_proj(1);
 
-	float r1 = sqrt(x1*x1 + y1 * y1);			//new length
-	float phi = atan2(y1, x1);					//angle from base to projected point
-	
+	//defining new coordinates 
+	float x1 = p_proj.x(), z1 = p_proj.z();
+
+	float r1 = sqrt(x1 * x1 + z1 * z1);			//new length
+	float phi = atan2(z1, x1);					//angle from base to projected point
+
 	//angle from the new point using cosine law
-	float cos_t2 = (l2 * l2 + r1 * r1 - (l3) * (l3)) / (2.f * l2 * r1);
+	float cos_t2 = (l2 * l2 + r1 * r1 - (l3_eff) * (l3_eff)) / (2.f * l2 * r1);
 	cos_t2 = std::min(1.0f, std::max(-1.0f, cos_t2));						//constraints
-	
-	float cos_t3 = (l2 * l2 + (l3) * (l3) - r1 * r1) / (2.f * l2 * (l3));
+
+	float cos_t3 = (l2 * l2 + (l3_eff) * (l3_eff)-r1 * r1) / (2.f * l2 * (l3_eff));
 	cos_t3 = std::min(1.0f, std::max(-1.0f, cos_t3));						//constraints
 
-	//case 1: elbow up
-	float t2 = phi + acos(cos_t2);
+	float t2 = -phi + acos(cos_t2);
 	float t3 = -PI + acos(cos_t3);
-	float t1 = -t;
-
-	/*case 2: elbow down
-	if (!isReachable(t1, t2, t3)) {
-		t2 = phi - acos(cos_t2);
-		t3 = PI - acos(cos_t3);
-	};
-	Eigen::Vector3d tar_vec = fk(t1, t2, t3, 0, 0, 0).back();
-  */
-
+	float t1 = t;
+	
 	return std::make_tuple(t1, t2, t3);
 }
 
@@ -164,17 +156,22 @@ private:
 		if (request->mode == 0){			//arm ik
 			result = ik(x, y, z);
 			RCLCPP_INFO(this->get_logger(), "Incoming request for arm angles\n");
+			response->angles.push_back(std::get<0>(result));
+			response->angles.push_back(std::get<1>(result));
+			response->angles.push_back(std::get<2>(result));
 			
 		}else if (request->mode ==1){		//wrist ik
 			result = wrist_ik(x, y, z);
 			RCLCPP_INFO(this->get_logger(), "Incoming request for wrist angles\n");
+			response->angles.push_back(std::get<0>(result));
+			response->angles.push_back(std::get<1>(result));
+			response->angles.push_back(std::get<2>(result));
+			
 		}else{
 			RCLCPP_ERROR(this->get_logger(), "Invalid mode selected");
 			return;
 		}
-		response->angles.push_back(std::get<0>(result));
-		response->angles.push_back(std::get<1>(result));
-		response->angles.push_back(std::get<2>(result));
+		
 		
 		RCLCPP_INFO(this->get_logger(), "x: %f\ny: %f\nz: %f",request->target.x,request->target.y,request->target.z);
 		RCLCPP_INFO(this->get_logger(), "Sending back %zu angles: ", response->angles.size());

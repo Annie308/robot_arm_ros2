@@ -49,13 +49,6 @@ def generate_launch_description():
         output='screen',
         prefix='xterm -hold -e',
     )
-        
-    start_gyro_node = Node(
-        package='robot_arm',
-        executable='start_gyro',
-        name='gyro_sensor',
-        output='screen',
-    )
 
     get_pos_node = Node(
         package='robot_arm',
@@ -79,10 +72,9 @@ def generate_launch_description():
     return LaunchDescription([
         robot_state_publisher_node,
         # this thing messes with the state publisher sometimes
-             #joint_state_publisher_gui_node,           
+        #joint_state_publisher_gui_node,           
         joint_state_publisher_node,
         set_target_node,
-        start_gyro_node,
         get_pos_node,
         get_angles_node,
         start_motors_node,
