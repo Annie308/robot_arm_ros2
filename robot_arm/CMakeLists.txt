@@ -17,7 +17,7 @@ find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
 #executables
-add_executable(inverse_kin src/inverse_kin.cpp src/forward_kin.cpp)
+add_executable(inverse_kin src/inverse_kin.cpp)
 add_executable(start_motors src/motor_control.cpp)
 add_executable(set_target src/set_target.cpp)
 add_executable(state_publisher src/state_publisher.cpp)

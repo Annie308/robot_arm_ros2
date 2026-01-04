@@ -11,7 +11,6 @@
 #include <Eigen/Dense>
 
 #include "arm_attributes.h"
-#include "forward_kin.h"
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;
@@ -90,18 +89,6 @@ static std::tuple<double,double,double> wrist_ik(double t1, double t2, double t3
 	}
 	return std::make_tuple(t6, t5, t4);
 }
-
-static bool target_reached(double x, double y, double z, double t1, double t2, double t3) {
-	Eigen::Vector3d tar_vec = fk(t1, t2, t3).back();
-
-	double tolerance = 0.05;		
-
-	if ((fabs(tar_vec(0) - x) < tolerance) && (fabs(tar_vec(1) - y) < tolerance) && (fabs(tar_vec(2) - z) < tolerance)) {
-		return true;
-	}
-	else return false;
-}
-
 
 static std::tuple<double,double,double> ik(double x, double y, double z) {
 	Eigen::Vector3d p_target = Eigen::Vector3d(x, y, z);
