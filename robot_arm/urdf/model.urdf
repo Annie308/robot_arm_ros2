@@ -101,7 +101,7 @@
   <xacro:property name="l5_len" value="0.2" />
   <link name="link5">
     <visual>
-        <origin xyz="${l5_len/2.0} 0 0" rpy="0 1.57 0" />
+        <origin xyz="0 0 -${l5_len/2.0}" rpy="0 0 0" />
         <geometry>
         <cylinder radius="0.1" length="${l5_len}" />
         </geometry>
@@ -120,7 +120,7 @@
   </link>
 
   <joint name="link4_to_link5_roll" type="revolute">
-   <axis xyz="1 0 0"/>
+   <axis xyz="0 0 1"/>
    <origin xyz="0 0 0" rpy="0 0 0"/>
    <limit effort="10" velocity="1" lower="-3.14" upper="3.14"/>
     <parent link="link5"/>
@@ -131,7 +131,7 @@
   </link>
 
   <joint name="link5_to_end" type="fixed">
-   <origin xyz="${l5_len} 0 0" rpy="0 0 0"/>
+   <origin xyz="0 0 -${l5_len}" rpy="0 0 0"/>
     <parent link="link5_roll"/>
     <child link="end_effector"/>
   </joint>

@@ -18,7 +18,6 @@ using InverseKin = robot_arm_interfaces::srv::InverseKin;
 using JointAngles = robot_arm_interfaces::msg::JointAngles;
 
 static std::tuple<double,double,double> wrist_ik(double t1, double t2, double t3,double roll, double pitch, double yaw) {
-	yaw *= -1.0;
 	//First we find R3 from the arm
 	// Rotation about Z
 	Eigen::MatrixXd rot1(3, 3);
@@ -41,38 +40,37 @@ static std::tuple<double,double,double> wrist_ik(double t1, double t2, double t3
 
 	//getting desired rotation matrices
 	//X
-
-	//Y
-	Eigen::MatrixXd R_pitch(3, 3);
-	R_pitch << cos(pitch), 0, sin(pitch),
-		0, 1, 0,
-		-sin(pitch), 0, cos(pitch);
-	
-	//Z
-	Eigen::MatrixXd R_yaw(3, 3);
-	R_yaw << cos(yaw), -sin(yaw), 0,
-		sin(yaw), cos(yaw), 0,
-		0, 0, 1;
 	//X
 	Eigen::MatrixXd R_roll(3, 3);
 	R_roll << 1, 0, 0,
 		0, cos(roll), -sin(roll),
 		0, sin(roll), cos(roll);
+	
+	//Z
+	Eigen::MatrixXd R_pitch(3, 3);
+	R_pitch << cos(pitch), 0, sin(pitch),
+		0, 1, 0,
+		-sin(pitch), 0, cos(pitch);
+	
+	//Y
+	Eigen::MatrixXd R_yaw(3, 3);
+	R_yaw << cos(yaw), -sin(yaw), 0,
+		sin(yaw), cos(yaw), 0,
+		0, 0, 1;
 
-
-	//ZYX
-	Eigen::MatrixXd R_T =R_yaw*R_pitch*R_roll;
+	//Goal rotations
+	Eigen::MatrixXd R_T =R_roll*R_pitch*R_yaw;
 
 	Eigen::MatrixXd goalRot = R_13.transpose() * R_T; // desired relative wrist rotation
 	
 	double t4, t5, t6;
 
-	//Our wrist rotation is in XYX. Im just gonna take only one solutions (the positive one) for now
+	//Our wrist rotation is in XYZ. Im just gonna take only one solutions (the positive one) for now
 
 	//constraints
-	double sin_t5 = std::clamp(sqrt(goalRot(1, 0)*goalRot(1,0) + goalRot(2,0)*goalRot(2,0)), -1.0, 1.0);
-	double cos_t5 = std::clamp(goalRot(0,0), -1.0, 1.0);
-	t5 = atan2(sin_t5, cos_t5);
+	double cos_t5 = std::clamp(sqrt(goalRot(0, 0)*goalRot(0,0) + goalRot(0,1)*goalRot(0,1)), -1.0, 1.0);
+	double sin_t5 = std::clamp(goalRot(0,2), -1.0, 1.0);
+	t5 = atan2(sin_t5,cos_t5);
 
 	//check for gimbal lock
 	bool gimbalLock = fabs(fabs(sin_t5) - 1.0) < 1e-5;
@@ -84,10 +82,10 @@ static std::tuple<double,double,double> wrist_ik(double t1, double t2, double t3
 		t6 = atan2(goalRot(0, 1), goalRot(0, 2));
 	}
 	else {
-		t4 = atan2(goalRot(1, 0)/sin(t5), -goalRot(2, 0)/sin(t5));
-		t6 = atan2(-goalRot(0, 1)/sin(t5), goalRot(0, 2)/sin(t5));
+		t4 = atan2(-goalRot(1, 2)/cos(t5), goalRot(2, 2)/cos(t5));
+		t6 = atan2(-goalRot(0, 1)/cos(t5), goalRot(0, 0)/cos(t5));
 	}
-	return std::make_tuple(t6, t5, t4);
+	return std::make_tuple(t4, t5, t6);
 }
 
 static std::tuple<double,double,double> ik(double x, double y, double z) {
