@@ -11,14 +11,12 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(robot_arm_interfaces REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(rclcpp_action REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
 #executables
 add_executable(inverse_kin src/inverse_kin.cpp)
-add_executable(start_motors src/motor_control.cpp)
 add_executable(set_target src/set_target.cpp)
 add_executable(state_publisher src/state_publisher.cpp)
 
@@ -42,11 +40,6 @@ target_link_libraries(inverse_kin PUBLIC
     Eigen3::Eigen 
     rclcpp::rclcpp
   )
-target_link_libraries(start_motors PUBLIC
-    ${robot_arm_interfaces_TARGETS}
-    ${std_msgs_TARGETS}
-    rclcpp::rclcpp
-  )
 target_link_libraries(set_target PUBLIC
     ${robot_arm_interfaces_TARGETS}
     ${std_msgs_TARGETS}
@@ -55,7 +48,6 @@ target_link_libraries(set_target PUBLIC
 
 install(TARGETS 
   inverse_kin
-  start_motors
   set_target
   state_publisher
   DESTINATION lib/${PROJECT_NAME}

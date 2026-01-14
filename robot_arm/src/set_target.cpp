@@ -10,7 +10,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
-#include "robot_arm_interfaces/msg/joint_angles.hpp"
 #include "robot_arm_interfaces/msg/joint_positions.hpp"
 #include "robot_arm_interfaces/srv/inverse_kin.hpp"
 #include "robot_arm_interfaces/srv/set_claw.hpp"
@@ -141,7 +140,6 @@ public:
 		auto angles_client = std::make_shared<ServiceClient>(rclcpp::NodeOptions(), *target, goal_type);
 		angles_client->get_angles();
 	}else{
-		//to send service request to set claw state (could be an action but idk how the feedback would work :()
 
 		//create client
 		auto claw_client = std::make_shared<ServiceClient>(rclcpp::NodeOptions(), *target, goal_type);

@@ -11,8 +11,6 @@ find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "action/SetTarget.action"
-  "msg/JointAngles.msg"
   "msg/JointPositions.msg"
   "srv/InverseKin.srv"
   "srv/SetClaw.srv"

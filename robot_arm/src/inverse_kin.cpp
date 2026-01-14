@@ -6,8 +6,10 @@
 #include <future>
 
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
+
 #include "robot_arm_interfaces/srv/inverse_kin.hpp"
-#include "robot_arm_interfaces/msg/joint_angles.hpp"
+
 #include <Eigen/Dense>
 
 #include "arm_attributes.h"
@@ -15,7 +17,6 @@
 using namespace std::chrono_literals;
 using namespace std::placeholders;
 using InverseKin = robot_arm_interfaces::srv::InverseKin;
-using JointAngles = robot_arm_interfaces::msg::JointAngles;
 
 static std::tuple<double,double,double> wrist_ik(double t1, double t2, double t3,double roll, double pitch, double yaw) {
 	//First we find R3 from the arm
@@ -150,12 +151,13 @@ public:
 		std::bind(&IkServer::get_result, this, _1, _2)
 	);
 
-	publisher_ptr_ = this->create_publisher<JointAngles>("arm_angles", 10);
+	publisher_ptr_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("arm_angles", 10);
 
 	auto publisher_timer_callback =
       [this]() -> void {
-        auto message = robot_arm_interfaces::msg::JointAngles();
-        message.joint_angles = joint_angles;
+        auto message = std_msgs::msg::Float64MultiArray();
+
+        message.data = joint_angles;
 
 		RCLCPP_INFO(this->get_logger(), "Publishing:");
 		
@@ -174,7 +176,7 @@ public:
 	
 private:
   rclcpp::Service<InverseKin>::SharedPtr service_ptr_;
-  rclcpp::Publisher<JointAngles>::SharedPtr publisher_ptr_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr publisher_ptr_;
   rclcpp::TimerBase::SharedPtr publisher_timer_;
   std::vector<double> joint_angles;
 

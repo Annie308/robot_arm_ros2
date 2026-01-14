@@ -3,14 +3,12 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-
-#include "robot_arm_interfaces/msg/joint_angles.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
 
 #include <cmath>
 #include <thread>
 #include <chrono>
 
-using JointAngles = robot_arm_interfaces::msg::JointAngles;
 
 using namespace std::chrono;
 
@@ -32,7 +30,7 @@ class StatePublisher : public rclcpp::Node{
 
             publisher_timer_=this->create_wall_timer(100ms,std::bind(&StatePublisher::publish,this));
 
-            subscription_ = this->create_subscription<robot_arm_interfaces::msg::JointAngles>(
+            subscription_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
             "arm_angles", 10, std::bind(&StatePublisher::topic_callback, this, std::placeholders::_1));
 
             auto subscriber_timer_callback =
@@ -45,10 +43,10 @@ class StatePublisher : public rclcpp::Node{
 
         void publish();
 
-        void topic_callback(const JointAngles::SharedPtr msg){
-            for (size_t i=0; i<msg->joint_angles.size(); i++){
-                RCLCPP_INFO(this->get_logger(), "Angles Recieved: '%lf'", msg->joint_angles[i]);
-                if (i < angles_rec.size()) { angles_rec[i] = msg->joint_angles[i]; }
+        void topic_callback(const std_msgs::msg::Float64MultiArray msg){
+            for (size_t i=0; i<msg.data.size(); i++){
+                RCLCPP_INFO(this->get_logger(), "Angles Recieved: '%lf'", msg.data[i]);
+                if (i < angles_rec.size()) { angles_rec[i] = msg.data[i]; }
             }
          }
     private:
@@ -56,7 +54,7 @@ class StatePublisher : public rclcpp::Node{
     std::shared_ptr<tf2_ros::TransformBroadcaster> broadcaster;
     rclcpp::Rate::SharedPtr loop_rate_;
 
-    rclcpp::Subscription<JointAngles>::SharedPtr subscription_;
+    rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr subscription_;
 	rclcpp::TimerBase::SharedPtr publisher_timer_;
 	rclcpp::TimerBase::SharedPtr subscription_timer_;
 
